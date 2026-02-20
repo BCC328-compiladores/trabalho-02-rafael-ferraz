@@ -5,6 +5,7 @@ import Frontend.Lexer.SLLexer as SLLexer
 import Frontend.Lexer.Token as Token
 import Frontend.Parser.SLParser as SLParser
 import Frontend.Syntax.SLSyntax as SLSyntax
+import Frontend.Semantic.SLSemantic as SLSemantic
 
 -- command line argument parser
 
@@ -12,7 +13,7 @@ data Option
   = Option Exec FilePath
 
 data Exec
-  = Lexer | Parser | Pretty 
+  = Lexer | Parser | Pretty | Interp
 
 compilerP :: Parser Option
 compilerP = Option <$> execP <*> fileOptionP
@@ -35,6 +36,10 @@ execP = flag' (Lexer)
            flag' Pretty
                  (  long "Pretty"
                  <> help "Use the Pretty")
+           <|>
+           flag' Interp
+                 (  long "Interp"
+                 <> help "Use the Interpreter")
 
 input :: Parser Option
 input = compilerP
@@ -42,7 +47,7 @@ input = compilerP
 opts :: ParserInfo Option
 opts = info input
        (fullDesc
-       <> header "Lexer, Parser and Pretty Printer")
+       <> header "Lexer, Parser, Pretty Printer and Interpreter for SL language")
 
 -- compiler frontend
 
@@ -68,14 +73,25 @@ frontend Parser content
     result <- pure (SLParser.runParser content)
     case result of
       Left err -> Left err
-      Right stmts -> Right (showParser stmts)
+      Right pTree -> Right (showParser pTree)
 
 frontend Pretty content
   = do
     result <- pure (SLParser.runParser content)
     case result of
       Left err -> Left err
-      Right stmts -> Right (showPretty stmts)
+      Right pTree -> Right (showPretty pTree)
+
+frontend Interp content
+  = do
+    result <- pure (SLParser.runParser content)
+    case result of
+      Left err -> Left err
+      Right pTree -> do 
+                     check <- pure (SLSemantic.semanticAnalysis pTree)
+                     case check of
+                       Left err -> Left err
+                       Right _ -> Right "Semantic Analysis: OK\nInterpreter not implemented\n"
 
 -- main expression function.
 

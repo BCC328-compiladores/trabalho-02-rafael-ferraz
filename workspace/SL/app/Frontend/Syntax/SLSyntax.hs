@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Frontend.Syntax.SLSyntax where
 
 import Data.Tree
@@ -71,9 +72,26 @@ data Type
   | IntArray Index
   | BoolArray Index
   | FloatArray Index
-  | StructT Id
+  | StructT Id [(Id, Type)]
   | StructTArray Id Index
+  | FuncT Id [(Id, Type)] Type
   deriving (Eq, Ord, Show)
+
+sameType :: Type -> Type -> Bool
+sameType (Int) (Int) = True
+sameType (Void) (Void) = True
+sameType (Bool) (Bool) = True
+sameType (Float) (Float) = True
+sameType (String) (String) = True
+sameType (IntArray _) (IntArray _) = True
+sameType (BoolArray _) (BoolArray _) = True
+sameType (FloatArray _) (FloatArray _) = True
+sameType (StructT n1 _) (StructT n2 _) = n1 == n2
+sameType (StructT n1 _) (StructTArray n2 _) = n1 == n2
+sameType (StructTArray n1 _) (StructT n2 _) = n1 == n2
+sameType (StructTArray n1 _) (StructTArray n2 _) = n1 == n2
+sameType (FuncT n1 args1 _) (FuncT n2 args2 _) = n1 == n2 && (map snd args1) == (map snd args2)
+sameType _ _ = False
 
 parserTree :: SL -> String
 parserTree (SL blocks) = drawTree (Node "SL" (addBlocks blocks))
@@ -152,72 +170,74 @@ instance Pretty SL where
   pretty (SL blocks) = vsep (map pretty blocks)
 
 prettyArg :: (Id, Type) -> Doc ann
-prettyArg (variable, varType) = pretty variable <+> pretty ":" <+> pretty varType
+prettyArg (variable, varType) = pretty variable <+> ":" <+> pretty varType
 
 prettyField :: (Id, Type) -> Doc ann
-prettyField (variable, varType) = pretty variable <+> pretty ":" <+> pretty varType <> pretty ";"
+prettyField (variable, varType) = pretty variable <+> ":" <+> pretty varType <> ";"
 
 instance Pretty Block where
   pretty (Func name args retType stmts) =
-    pretty "func" <+> pretty name <> pretty "(" <> hsep (punctuate comma (map prettyArg args)) <> pretty ")"
-      <+> pretty ":" <+> pretty retType <+> pretty "{" <> line <> indent 2 (vsep (map pretty stmts)) <> line <> pretty "}" <> line
+    "func" <+> pretty name <> "(" <> hsep (punctuate comma (map prettyArg args)) <> ")"
+      <+> ":" <+> pretty retType <+> "{" <> line <> indent 2 (vsep (map pretty stmts)) <> line <> "}" <> line
   pretty (Struct name fields) =
-    pretty "struct" <+> pretty name <+> pretty "{" <> line <> indent 2 (vsep (map prettyField fields)) <> line <> pretty "}" <> line
+    "struct" <+> pretty name <+> "{" <> line <> indent 2 (vsep (map prettyField fields)) <> line <> "}" <> line
 
 instance Pretty Stmt where
-  pretty (SDeclare variable varType) = pretty "var" <+> pretty variable <+> pretty ":" <+> pretty varType <> pretty ";"
-  pretty (SInit variable varType expr) = pretty "var" <+> pretty variable <+> pretty ":" <+> pretty varType <+> pretty "="
-    <+> pretty expr <> pretty ";"
-  pretty (SAssign variable expr) = pretty variable <+> pretty "=" <+> pretty expr <> pretty ";"
-  pretty (SAssignAt variable index expr) = pretty variable <> pretty "[" <> pretty index <> pretty "]" <+> pretty "="
-    <+> pretty expr <> pretty ";"
-  pretty (SRead variable) = pretty "read" <> pretty "(" <> pretty variable <> pretty ")" <> pretty ";"
-  pretty (SPrint expr) = pretty "print" <> pretty "(" <> pretty expr <> pretty ")" <> pretty ";"
-  pretty (SIf cond thenStmts elseStmts) = pretty "if" <+> pretty "(" <> pretty cond <> pretty ")" <+> pretty "{" <> line
-    <> indent 2 (vsep (map pretty thenStmts)) <> line <> pretty "}" <+> pretty "else" <+> pretty "{" <> line
-    <> indent 2 (vsep (map pretty elseStmts)) <> line <> pretty "}"
-  pretty (SWhile cond whileStmts) = pretty "while" <+> pretty "(" <> pretty cond <> pretty ")" <+> pretty "{" <> line
-    <> indent 2 (vsep (map pretty whileStmts)) <> line <> pretty "}"
-  pretty (SReturn expr) = pretty "return" <+> pretty expr <> pretty ";"
+  pretty (SDeclare variable varType) = "var" <+> pretty variable <+> ":" <+> pretty varType <> ";"
+  pretty (SInit variable varType expr) = "var" <+> pretty variable <+> ":" <+> pretty varType <+> "="
+    <+> pretty expr <> ";"
+  pretty (SAssign variable expr) = pretty variable <+> "=" <+> pretty expr <> ";"
+  pretty (SAssignAt variable index expr) = pretty variable <> "[" <> pretty index <> "]" <+> "="
+    <+> pretty expr <> ";"
+  pretty (SRead variable) = "read" <> "(" <> pretty variable <> ")" <> ";"
+  pretty (SPrint expr) = "print" <> "(" <> pretty expr <> ")" <> ";"
+  pretty (SIf cond thenStmts elseStmts) = "if" <+> "(" <> pretty cond <> ")" <+> "{" <> line
+    <> indent 2 (vsep (map pretty thenStmts)) <> line <> "}" <+> "else" <+> "{" <> line
+    <> indent 2 (vsep (map pretty elseStmts)) <> line <> "}"
+  pretty (SWhile cond whileStmts) = "while" <+> "(" <> pretty cond <> ")" <+> "{" <> line
+    <> indent 2 (vsep (map pretty whileStmts)) <> line <> "}"
+  pretty (SReturn expr) = "return" <+> pretty expr <> ";"
 
 instance Pretty Exp where
   pretty (EValue val) = pretty val
   pretty (EVar name) = pretty name
-  pretty (EVarField var field) = pretty var <> pretty "." <> pretty field
-  pretty (ENot e) = pretty "!" <> pretty e
-  pretty (EArray values) = pretty "[" <> hsep (punctuate comma (map pretty values)) <> pretty "]"
-  pretty (EArrayAt arrayId index) = pretty arrayId <> pretty "[" <> pretty index <> pretty "]"
-  pretty (EArrayAtField arrayId index field) = pretty arrayId <> pretty "[" <> pretty index <> pretty "]" <> pretty "." <> pretty field
-  pretty (ECall func args) = pretty func <> pretty "(" <> hsep (punctuate comma (map pretty args)) <> pretty ")"
-  pretty (EStruct structName args) = pretty structName <> pretty "{" <> hsep (punctuate comma (map pretty args)) <> pretty "}"
-  pretty (e1 :<=: e2) = pretty e1 <+> pretty "<=" <+> pretty e2
-  pretty (e1 :<: e2) = pretty e1 <+> pretty "<" <+> pretty e2
-  pretty (e1 :>=: e2) = pretty e1 <+> pretty ">=" <+> pretty e2
-  pretty (e1 :>: e2) = pretty e1 <+> pretty ">" <+> pretty e2
-  pretty (e1 :==: e2) = pretty e1 <+> pretty "==" <+> pretty e2
-  pretty (e1 :!=: e2) = pretty e1 <+> pretty "!=" <+> pretty e2
-  pretty (e1 :||: e2) = pretty e1 <+> pretty "||" <+> pretty e2
-  pretty (e1 :&&: e2) = pretty e1 <+> pretty "&&" <+> pretty e2
-  pretty (e1 :+: e2) = pretty "(" <> pretty e1 <+> pretty "+" <+> pretty e2 <> pretty ")"
-  pretty (e1 :-: e2) = pretty "(" <> pretty e1 <+> pretty "-" <+> pretty e2 <> pretty ")"
-  pretty (e1 :*: e2) = pretty "(" <> pretty e1 <+> pretty "*" <+> pretty e2 <> pretty ")"
-  pretty (e1 :/: e2) = pretty "(" <> pretty e1 <+> pretty "/" <+> pretty e2 <> pretty ")"
+  pretty (EVarField var field) = pretty var <> "." <> pretty field
+  pretty (ENot e) = "!" <> pretty e
+  pretty (EArray values) = "[" <> hsep (punctuate comma (map pretty values)) <> "]"
+  pretty (EArrayAt arrayId index) = pretty arrayId <> "[" <> pretty index <> "]"
+  pretty (EArrayAtField arrayId index field) = pretty arrayId <> "[" <> pretty index <> "]" <> "." <> pretty field
+  pretty (ECall func args) = pretty func <> "(" <> hsep (punctuate comma (map pretty args)) <> ")"
+  pretty (EStruct structName args) = pretty structName <> "{" <> hsep (punctuate comma (map pretty args)) <> "}"
+  pretty (e1 :<=: e2) = pretty e1 <+> "<=" <+> pretty e2
+  pretty (e1 :<: e2) = pretty e1 <+> "<" <+> pretty e2
+  pretty (e1 :>=: e2) = pretty e1 <+> ">=" <+> pretty e2
+  pretty (e1 :>: e2) = pretty e1 <+> ">" <+> pretty e2
+  pretty (e1 :==: e2) = pretty e1 <+> "==" <+> pretty e2
+  pretty (e1 :!=: e2) = pretty e1 <+> "!=" <+> pretty e2
+  pretty (e1 :||: e2) = pretty e1 <+> "||" <+> pretty e2
+  pretty (e1 :&&: e2) = pretty e1 <+> "&&" <+> pretty e2
+  pretty (e1 :+: e2) = "(" <> pretty e1 <+> "+" <+> pretty e2 <> ")"
+  pretty (e1 :-: e2) = "(" <> pretty e1 <+> "-" <+> pretty e2 <> ")"
+  pretty (e1 :*: e2) = "(" <> pretty e1 <+> "*" <+> pretty e2 <> ")"
+  pretty (e1 :/: e2) = "(" <> pretty e1 <+> "/" <+> pretty e2 <> ")"
 
 instance Pretty Index where
   pretty (IValue val) = pretty val
   pretty (IVar name) = pretty name
-  pretty (IAdd i1 i2) = pretty i1 <+> pretty "+" <+> pretty i2
-  pretty (ISub i1 i2) = pretty i1 <+> pretty "-" <+> pretty i2
-  pretty IEmpty = pretty ""
+  pretty (IAdd i1 i2) = pretty i1 <+> "+" <+> pretty i2
+  pretty (ISub i1 i2) = pretty i1 <+> "-" <+> pretty i2
+  pretty IEmpty = ""
 
 instance Pretty Type where
-  pretty Int = pretty "int"
-  pretty Void = pretty "void"
-  pretty Bool = pretty "bool"
-  pretty Float = pretty "float"
-  pretty String = pretty "string"
-  pretty (IntArray index) = pretty "int" <> pretty "[" <> pretty index <> pretty "]"
-  pretty (BoolArray index) = pretty "bool" <> pretty "[" <> pretty index <> pretty "]"
-  pretty (FloatArray index) = pretty "float" <> pretty "[" <> pretty index <> pretty "]"
-  pretty (StructT structName) = pretty structName
-  pretty (StructTArray structName index) = pretty structName <> pretty "[" <> pretty index <> pretty "]"
+  pretty Int = "int"
+  pretty Void = "void"
+  pretty Bool = "bool"
+  pretty Float = "float"
+  pretty String = "string"
+  pretty (IntArray index) = "int" <> "[" <> pretty index <> "]"
+  pretty (BoolArray index) = "bool" <> "[" <> pretty index <> "]"
+  pretty (FloatArray index) = "float" <> "[" <> pretty index <> "]"
+  pretty (StructT structName _) = "struct" <+> pretty structName
+  pretty (StructTArray structName index) = pretty structName <> "[" <> pretty index <> "]"
+  pretty (FuncT funcName args retType) = "func" <+> pretty funcName <> "("
+    <> hsep (punctuate comma (map prettyArg args)) <> ")" <+> ":" <+> pretty retType

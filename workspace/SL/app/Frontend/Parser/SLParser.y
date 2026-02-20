@@ -154,7 +154,7 @@ Type : 'int'                 { Int }
      | 'int' '[' Index ']'   { IntArray $3 }
      | 'bool' '[' Index ']'  { BoolArray $3 }
      | 'float' '[' Index ']' { FloatArray $3 }
-     | id                    { StructT $1 }
+     | id                    { StructT $1 [] }
      | id '[' Index ']'      { StructTArray $1 $3 }
 
 Var : id { $1 }
