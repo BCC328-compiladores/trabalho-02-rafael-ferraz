@@ -40,8 +40,8 @@
 
 \title{Relatório de Projeto: Compilador SL}
 \author{
-    Nome do Aluno \\
-    Matrícula: \\
+    Rafael Louback Ferraz \\
+    Matrícula: 11.1.4089 \\
     BCC328 - Construção de Compiladores I - DECOM/UFOP
 }
 \date{\today}
@@ -56,41 +56,60 @@
 \tableofcontents
 
 \section{Introdução}
+Neste trabalho, foi desenvolvido um compilador em Haskell para
+a linguagem de programação SL, uma linguagem simples com suporte a
+funções, registros e arranjos. Este relatório abordará a segunda parte do trabalho que foca na analise semântica e interpretador de um compilador.
 
 \section{Metodologia}
+A metodologia consiste em pesquisa no material da disciplina e exemplos encontrados na internet. Além de aprofundamento de conhecimento em Haskell ou nas bibliotecas utilizadas na implementação deste trabalho pelo uso de consultas a inteligencias artificiais como por exemplo Google Gemini, sem utilizar recursos de geração de código pronto.
 
 \subsection{Estrutura sintática de SL}
-
-\subsection{Sistema de tipos para SL}
-
-\subsection{Inferência de tipos para SL}
-
-\subsection{Semântica operacional para SL}
-
+A linguagem SL possui tipagem estática, com suporte aos tipos de dados int, void, float, string e bool. As estruturas de controle incluem if-else, while
+e for, enquanto as estruturas de dados suportam arranjos unidimensionais
+e registros (structs). A linguagem permite a definição de funções com
+parâmetros e retorno. Adicionalmente, a linguagem deve prover suporte a
+polimorfismo paramétrico (generics) e inferência de tipos.
 
 \section{Arquitetura do Compilador}
-
-\subsection{Análise léxica}
-
-\subsection{Análise sintática}
-
-\subsection{Árvore de sintaxe abstrata}
+A arquitetura desenvolvida consiste na implementação do compilador com os Frontends para análise léxica, sintática e semântica e uma porção de logica que gerencie o prompt de comando além da entrada e saída de dados.
 
 \subsection{Análise semântica}
+Depois que a arvore de sintaxe abstrata é gerada o próximo passo para a eventual execução do código fonte da linguagem SL é a analise semântica da árvore. Esta etapa consiste em verificar se os tipos definidos são adequados, se as variáveis acessadas estão declaradas em seus devidos escopos, verificação de fluxo de controle (e.g., if, for e while) e checagem de unicidade. E com isso verificar se o código descrito faz sentido lógico e obedece às regras de significado da linguagem.
 
-\subsection{Geração de código}
+Na implementação da análise semântica foram definidos a variavel Env que consiste em um mapa com uma string identificadora e um descritor de tipo para cada variável, estrutura ou função. Além de um conjunto de erros que podem ser lançados durante a verificação da analise semântica. Por ultimo foi utilizado o tipo Checker como uma Monada ReaderT que pode lançar erros caso os encontre. A execução da analise semântica é feita processando os elementos da arvore de sintaxe abstrata de modo recursivo, lançando erros se necessário ou não retornando algo e continuando o percorrimento da arvore até sua completude.
+
+\lstinputlisting[language=Haskell]{semantic.hs}
+
+%\subsection{Geração de código}
 
 \section{Resultados e Discussão}
+Neste segundo trabalho temos como resultado a implementação da analise semântica, que utiliza da Monada ReaderT para sua execução.
 
 \subsection{Instruções de Uso}
+Para utilização do projeto deve-se configurar um ambiente Docker com Ubuntu Linux e inicializar o container Docker com os seguintes comandos:
 
+\begin{lstlisting}
+docker-compose up -d
+docker-compose exec sl bash
+\end{lstlisting}
+
+Após entrar no ambiente de execução do container deve-se navegar à pasta onde o projeto cabal é organizado e executar o seguinte comando:
+
+\begin{lstlisting}
+cabal run SL -- -f 'Exemplo 1.sl' --Interp
+\end{lstlisting}
+
+Este comando executara a analise semântica, gerando erros no prompt de comando caso problemas sejam detectados no código fonte da linguagem SL.
 
 \subsection{Testes Realizados}
-
+Os testes consistiram em executar os exemplos de código fonte para a linguagem SL descritos no enunciado do trabalho, com exceção dos exemplos de função identidade e função map. 
 
 \subsection{Limitações}
+Não foi implementado suporte a funções identidade e map. E neste segundo trabalho foi implementado a analise semântica mas não foi implementado o interpretador.
 
 \section{Conclusão}
+
+Neste trabalho foi implementado a analise semântica para a linguagem SL com foco na aprendizagem dos conceitos envolvidos em sua operação.
 
 \section{Referências}
 
